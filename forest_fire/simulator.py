@@ -68,6 +68,9 @@ class ForestFireSimulator:
     def _in_bounds(self, row: int, col: int) -> bool:
         return 0 <= row < self.height and 0 <= col < self.width
 
+    def _is_adjacent_to_water(self, row: int, col: int, grid: Grid) -> bool:
+        return any(grid[n_row][n_col] == Terrain.WATER for n_row, n_col in self._neighbors_8(row, col))
+
     def _neighbors_8(self, row: int, col: int) -> list[Position]:
         neighbors: list[Position] = []
         for d_row in (-1, 0, 1):
@@ -111,10 +114,7 @@ class ForestFireSimulator:
                     if (
                         source[n_row][n_col] == Terrain.TREE
                         and result[n_row][n_col] != Terrain.BURNED
-                        and not (
-                            self.water_protection
-                            and self._is_adjacent_to_water(n_row, n_col, source)
-                        )
+                        and not self._is_adjacent_to_water(n_row, n_col, source)
                     ):
                         result[n_row][n_col] = Terrain.BURNED
                         next_frontier.append((n_row, n_col))

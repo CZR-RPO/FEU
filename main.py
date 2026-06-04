@@ -18,7 +18,6 @@ class SimulationConfig:
     water_percentage: float = 10 #chance d'avoir une case eau 
     seed: int = 11 #seed de génération d'aléatoire des cases
     requested_start: Position = (5, 9) #feu de départ
-    water_protection: bool = True
     paginated_html_path: str = "carte_brulee_paginee.html"
 
 
