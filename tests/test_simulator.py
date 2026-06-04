@@ -56,7 +56,8 @@ def test_simulate_fire_steps_contains_iterations() -> None:
 
 
 def test_find_best_tree_to_clear() -> None:
-    simulator = ForestFireSimulator(4, 4, tree_percentage=0, water_percentage=0)
+    # water_protection=False : la logique originale s'applique, l'eau ne bloque pas
+    simulator = ForestFireSimulator(4, 4, tree_percentage=0, water_percentage=0, water_protection=False)
     simulator.grid = [
         [Terrain.TREE, Terrain.TREE, Terrain.WATER, Terrain.WATER],
         [Terrain.WATER, Terrain.TREE, Terrain.WATER, Terrain.WATER],
@@ -67,6 +68,41 @@ def test_find_best_tree_to_clear() -> None:
     assert best_position == (1, 1)
     assert best_burned == 2
     assert reduction == 5
+
+
+def test_water_protection_on_blocks_adjacent_trees() -> None:
+    simulator = ForestFireSimulator(3, 3, tree_percentage=0, water_percentage=0, water_protection=True)
+    simulator.grid = [
+        [Terrain.TREE, Terrain.TREE, Terrain.WATER],
+        [Terrain.BARE, Terrain.BARE, Terrain.BARE],
+        [Terrain.BARE, Terrain.BARE, Terrain.BARE],
+    ]
+    burned = simulator.simulate_fire((0, 0))
+    assert burned[0][0] == Terrain.BURNED
+    assert burned[0][1] == Terrain.TREE  # adjacent à l'eau : protégé
+
+
+def test_water_protection_off_allows_spread_near_water() -> None:
+    simulator = ForestFireSimulator(3, 3, tree_percentage=0, water_percentage=0, water_protection=False)
+    simulator.grid = [
+        [Terrain.TREE, Terrain.TREE, Terrain.WATER],
+        [Terrain.BARE, Terrain.BARE, Terrain.BARE],
+        [Terrain.BARE, Terrain.BARE, Terrain.BARE],
+    ]
+    burned = simulator.simulate_fire((0, 0))
+    assert burned[0][0] == Terrain.BURNED
+    assert burned[0][1] == Terrain.BURNED  # sans protection : brûle malgré l'eau voisine
+
+
+def test_ignition_point_always_burns_even_adjacent_to_water() -> None:
+    simulator = ForestFireSimulator(3, 3, tree_percentage=0, water_percentage=0, water_protection=True)
+    simulator.grid = [
+        [Terrain.TREE, Terrain.WATER, Terrain.BARE],
+        [Terrain.WATER, Terrain.BARE, Terrain.BARE],
+        [Terrain.BARE, Terrain.BARE, Terrain.BARE],
+    ]
+    burned = simulator.simulate_fire((0, 0))
+    assert burned[0][0] == Terrain.BURNED  # l'ignition s'applique quelle que soit l'adjacence
 
 
 def test_export_html_creates_file(tmp_path: Path) -> None:
