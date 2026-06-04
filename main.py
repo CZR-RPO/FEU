@@ -129,6 +129,7 @@ class ConfigDialog:
 class FireSimulationApp:
     CELL_SIZE = 28
     PADDING = 1
+    BEST_TREE_OUTLINE = "#f1c40f"
 
     COLORS = {
         Terrain.BARE: "#d9c5a0",
@@ -149,11 +150,15 @@ class FireSimulationApp:
         simulator: ForestFireSimulator,
         steps: list[Grid],
         ignition_start: Position,
+        best_tree_info: tuple[Position | None, int, int],
     ) -> None:
         self.simulator = simulator
         self.steps = steps
         self.ignition_start = ignition_start
         self.current_step = 0
+
+        best_pos, best_burned, reduction = best_tree_info
+        self.best_tree_pos: Position | None = best_pos
 
         self.root = tk.Tk()
         self.root.title("Simulation Feu de Foret - Iterations")
@@ -161,8 +166,18 @@ class FireSimulationApp:
 
         self.status_var = tk.StringVar()
         self.step_var = tk.StringVar(value="0")
+        self.best_tree_var = tk.StringVar()
 
         self._build_layout()
+
+        if best_pos is not None:
+            self.best_tree_var.set(
+                f"Arbre optimal à déboiser : {best_pos}"
+                f"  |  Économie : {reduction} case(s)  →  {best_burned} brûlées si coupé"
+            )
+        else:
+            self.best_tree_var.set("Aucun arbre à déboiser ne réduit l'incendie.")
+
         self._render_step(0)
 
         self.root.bind("<Left>", lambda _event: self.previous_step())
@@ -177,6 +192,11 @@ class FireSimulationApp:
 
         self.status_label = ttk.Label(top, textvariable=self.status_var)
         self.status_label.grid(row=1, column=0, columnspan=4, sticky="w", pady=(6, 0))
+
+        ttk.Label(
+            top, textvariable=self.best_tree_var, foreground="#b7860b",
+            font=("Segoe UI", 9, "bold"),
+        ).grid(row=2, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
         controls = ttk.Frame(self.root, padding=(12, 0, 12, 12))
         controls.pack(fill="x")
@@ -217,13 +237,12 @@ class FireSimulationApp:
                 y1 = row_idx * self.CELL_SIZE + self.PADDING
                 x2 = (col_idx + 1) * self.CELL_SIZE - self.PADDING
                 y2 = (row_idx + 1) * self.CELL_SIZE - self.PADDING
+                is_best = self.best_tree_pos == (row_idx, col_idx)
                 self.canvas.create_rectangle(
-                    x1,
-                    y1,
-                    x2,
-                    y2,
+                    x1, y1, x2, y2,
                     fill=self.COLORS[cell],
-                    outline="#ffffff",
+                    outline=self.BEST_TREE_OUTLINE if is_best else "#ffffff",
+                    width=3 if is_best else 1,
                 )
                 self.canvas.create_text(
                     (x1 + x2) // 2,
@@ -269,7 +288,9 @@ class FireSimulationApp:
         self.root.mainloop()
 
 
-def build_simulation(config: SimulationConfig) -> tuple[ForestFireSimulator, Position, list[Grid]]:
+def build_simulation(
+    config: SimulationConfig,
+) -> tuple[ForestFireSimulator, Position, list[Grid], tuple[Position | None, int, int]]:
     sim = ForestFireSimulator(
         width=config.width,
         height=config.height,
@@ -280,7 +301,8 @@ def build_simulation(config: SimulationConfig) -> tuple[ForestFireSimulator, Pos
     )
     start = find_ignition_start(sim, config.requested_start)
     steps = sim.simulate_fire_steps(start)
-    return sim, start, steps
+    best_tree_info = sim.find_best_tree_to_clear(start)
+    return sim, start, steps, best_tree_info
 
 
 def main() -> None:
@@ -288,10 +310,17 @@ def main() -> None:
     if config is None:
         return
 
-    simulator, ignition_start, steps = build_simulation(config)
-    simulator.export_paginated_html(config.paginated_html_path, steps, ignition_start)
+    simulator, ignition_start, steps, best_tree_info = build_simulation(config)
+    simulator.export_paginated_html(
+        config.paginated_html_path, steps, ignition_start, best_tree=best_tree_info
+    )
 
-    app = FireSimulationApp(simulator=simulator, steps=steps, ignition_start=ignition_start)
+    app = FireSimulationApp(
+        simulator=simulator,
+        steps=steps,
+        ignition_start=ignition_start,
+        best_tree_info=best_tree_info,
+    )
     app.run()
 
 
