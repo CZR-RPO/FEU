@@ -25,6 +25,7 @@ class ForestFireSimulator:
         tree_percentage: float,
         water_percentage: float = 10.0,
         seed: Optional[int] = None,
+        water_protection: bool = True,
     ) -> None:
         if width <= 0 or height <= 0:
             raise ValueError("width and height must be strictly positive")
@@ -39,6 +40,7 @@ class ForestFireSimulator:
         self.height = height
         self.tree_percentage = tree_percentage
         self.water_percentage = water_percentage
+        self.water_protection = water_protection
         self._random = random.Random(seed)
         self.grid: Grid = self.generate_random_map()
 
@@ -78,6 +80,9 @@ class ForestFireSimulator:
                     neighbors.append((n_row, n_col))
         return neighbors
 
+    def _is_adjacent_to_water(self, row: int, col: int, grid: Grid) -> bool:
+        return any(grid[n_row][n_col] == Terrain.WATER for n_row, n_col in self._neighbors_8(row, col))
+
     def simulate_fire(self, start: Position, grid: Optional[Grid] = None) -> Grid:
         steps = self.simulate_fire_steps(start=start, grid=grid)
         return steps[-1]
@@ -106,6 +111,10 @@ class ForestFireSimulator:
                     if (
                         source[n_row][n_col] == Terrain.TREE
                         and result[n_row][n_col] != Terrain.BURNED
+                        and not (
+                            self.water_protection
+                            and self._is_adjacent_to_water(n_row, n_col, source)
+                        )
                     ):
                         result[n_row][n_col] = Terrain.BURNED
                         next_frontier.append((n_row, n_col))
