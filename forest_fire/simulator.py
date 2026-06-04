@@ -217,6 +217,7 @@ class ForestFireSimulator:
         path: str | Path,
         steps: list[Grid],
         ignition_start: Optional[Position] = None,
+        best_tree: Optional[tuple[Position, int, int]] = None,
     ) -> None:
         if not steps:
             raise ValueError("steps must contain at least one grid")
@@ -224,6 +225,17 @@ class ForestFireSimulator:
         destination = Path(path)
         steps_json = json.dumps(steps)
         ignition = str(ignition_start) if ignition_start is not None else "N/A"
+
+        if best_tree is not None and best_tree[0] is not None:
+            pos, best_burned, reduction = best_tree
+            best_tree_js = json.dumps(list(pos))
+            best_tree_label = (
+                f"Arbre optimal à déboiser : {pos} | "
+                f"Économie : {reduction} case(s) → {best_burned} brûlées si coupé"
+            )
+        else:
+            best_tree_js = "null"
+            best_tree_label = "Aucun arbre à déboiser ne réduit l\'incendie."
 
         html = f"""<!doctype html>
 <html lang="fr">
@@ -259,10 +271,17 @@ class ForestFireSimulator:
       font-weight: 600;
       color: #ffffff;
     }}
+    .cell.best-tree {{ box-shadow: inset 0 0 0 3px #f1c40f; }}
+    .best-tree-info {{
+      margin: 0.5rem 0 0.25rem;
+      font-weight: 600;
+      color: #b7860b;
+    }}
   </style>
 </head>
 <body>
   <h1>Simulation Feu de Foret - Iterations</h1>
+  <p class="best-tree-info">{best_tree_label}</p>
   <p id="status"></p>
   <div class="controls">
     <button id="btn-prev" type="button">Precedent</button>
@@ -274,6 +293,7 @@ class ForestFireSimulator:
 
   <script>
     const steps = {steps_json};
+    const bestTree = {best_tree_js};
     const colors = {{
       "N": "#d9c5a0",
       "A": "#2d8a3d",
@@ -311,11 +331,12 @@ class ForestFireSimulator:
       current = index;
       grid.innerHTML = "";
       const step = steps[index];
-      for (const row of step) {{
+      for (let r = 0; r < step.length; r += 1) {{
         const tr = document.createElement("tr");
-        for (const cell of row) {{
+        for (let c = 0; c < step[r].length; c += 1) {{
+          const cell = step[r][c];
           const td = document.createElement("td");
-          td.className = "cell";
+          td.className = "cell" + (bestTree && r === bestTree[0] && c === bestTree[1] ? " best-tree" : "");
           td.textContent = cell;
           td.style.background = colors[cell];
           tr.appendChild(td);
