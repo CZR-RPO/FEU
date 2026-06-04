@@ -12,12 +12,12 @@ Position = tuple[int, int]
 
 @dataclass(frozen=True)
 class SimulationConfig:
-    width: int = 20
-    height: int = 12
-    tree_percentage: float = 55
-    water_percentage: float = 10
-    seed: int = 11
-    requested_start: Position = (5, 9)
+    width: int = 20 #largeur
+    height: int = 12 #hauteur
+    tree_percentage: float = 55 #chance d'avoir une case arbre
+    water_percentage: float = 10 #chance d'avoir une case eau 
+    seed: int = 11 #seed de génération d'aléatoire des cases
+    requested_start: Position = (5, 9) #feu de départ
     paginated_html_path: str = "carte_brulee_paginee.html"
 
 
